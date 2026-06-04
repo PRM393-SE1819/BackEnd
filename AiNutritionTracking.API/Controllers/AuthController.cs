@@ -1,5 +1,5 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
-using AiNutritionTracking.API.DTOs;
+using AiNutritionTracking.API.DTOs.Auth;
 using AiNutritionTracking.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

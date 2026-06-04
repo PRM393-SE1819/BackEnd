@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 
-namespace AiNutritionTracking.API.DTOs
+namespace AiNutritionTracking.API.DTOs.Auth
 {
 
     public class RegisterRequestDTO

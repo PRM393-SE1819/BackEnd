@@ -46,6 +46,8 @@ builder.Services.AddDbContext<AinutritiontrackingContext>(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IHealthProfileService, HealthProfileService>();
 
 // In-memory cache (used for OTP storage)
 builder.Services.AddMemoryCache();
@@ -79,7 +81,7 @@ builder.Services.AddAuthentication(options =>
             var jti = ctx.Principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value;
             if (!string.IsNullOrEmpty(jti))
             {
-                // Ki?m tra xem Token n‡y cÛ n?m trong "Danh s·ch ?en" (MemoryCache) khÙng
+                // Ki?m tra xem Token n√†y c√≥ n?m trong "Danh s√°ch ?en" (MemoryCache) kh√¥ng
                 var cache = ctx.HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
                 if (cache.TryGetValue($"revoked:{jti}", out _))
                 {
