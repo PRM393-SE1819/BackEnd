@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
-using AiNutritionTracking.API.DTOs; 
+using AiNutritionTracking.API.DTOs.Auth;
 namespace AiNutritionTracking.API.Services
 {
     public interface IAuthService

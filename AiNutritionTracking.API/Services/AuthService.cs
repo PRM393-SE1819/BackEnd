@@ -2,7 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using AiNutritionTracking.API.Data;
-using AiNutritionTracking.API.DTOs;
+using AiNutritionTracking.API.DTOs.Auth;
 using AiNutritionTracking.API.Models;
 using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
