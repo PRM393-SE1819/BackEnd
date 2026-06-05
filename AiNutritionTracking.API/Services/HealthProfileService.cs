@@ -169,15 +169,13 @@ namespace AiNutritionTracking.API.Services
             if (condition == null) return (false, "Không tìm thấy bệnh lý.");
 
             if (condition.UserId != userId) return (false, "Bạn không có quyền sửa dữ liệu này.");
-            // Logic: Chỉ cập nhật khi Client truyền giá trị thực sự (khác null/rỗng)
+           
             if (!string.IsNullOrWhiteSpace(request.ConditionName))
             {
                 condition.ConditionName = request.ConditionName.Trim();
             }
 
-            // Logic: Nếu muốn cho phép người dùng xóa note (để trống), 
-            // thì không dùng IsNullOrWhiteSpace mà chỉ check null.
-            // NHƯNG nếu muốn "chỉ cập nhật khi có nội dung mới" thì dùng như dưới:
+           
             if (!string.IsNullOrWhiteSpace(request.Notes))
             {
                 condition.Notes = request.Notes.Trim();
