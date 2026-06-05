@@ -104,12 +104,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "AiNutritionTracking API v1");
+    c.RoutePrefix = string.Empty;
+});
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
@@ -118,5 +118,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// 2. CẤU HÌNH NHẬN ĐỘNG PORT TỪ RENDER
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Urls.Add($"http://*:{port}");
 
 app.Run();
