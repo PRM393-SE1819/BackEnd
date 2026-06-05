@@ -108,10 +108,11 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "AiNutritionTracking API v1");
-    c.RoutePrefix = string.Empty;
+    //c.RoutePrefix = string.Empty;
 });
 
 app.UseHttpsRedirection();
+app.UseRouting();
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
