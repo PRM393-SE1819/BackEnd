@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Threading.Tasks;
 
 namespace AiNutritionTracking.API.Services
@@ -17,27 +17,30 @@ namespace AiNutritionTracking.API.Services
 
         private async Task SendMailAsync(string toEmail, string fullName, string subject, string bodyHtml)
         {
-            var apiKey = _configuration["Resend:ApiKey"];
+            var apiKey = _configuration["ElasticEmail:ApiKey"];
+            var fromEmail = _configuration["ElasticEmail:FromEmail"];
 
             using var http = new HttpClient();
-            http.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 
-            var payload = new
+            var payload = new FormUrlEncodedContent(new[]
             {
-                from = "AiNutritionTracking <onboarding@resend.dev>",
-                to = new[] { "nguyenngocbaohann12@gmail.com" }, 
-                subject = subject,
-                html = bodyHtml
-            };
+                new KeyValuePair<string, string>("apikey", apiKey),
+                new KeyValuePair<string, string>("from", fromEmail),
+                new KeyValuePair<string, string>("fromName", "AiNutritionTracking"),
+                new KeyValuePair<string, string>("to", toEmail),
+                new KeyValuePair<string, string>("subject", subject),
+                new KeyValuePair<string, string>("bodyHtml", bodyHtml),
+                new KeyValuePair<string, string>("isTransactional", "true")
+            });
 
             try
             {
-                var response = await http.PostAsJsonAsync("https://api.resend.com/emails", payload);
+                var response = await http.PostAsync("https://api.elasticemail.com/v2/email/send", payload);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var error = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"Resend error: {error}");
+                    throw new Exception($"ElasticEmail error: {error}");
                 }
             }
             catch (Exception ex)
