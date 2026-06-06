@@ -19,6 +19,8 @@ namespace AiNutritionTracking.API.Services
         {
             var apiKey = _configuration["ElasticEmail:ApiKey"];
             var fromEmail = _configuration["ElasticEmail:FromEmail"];
+            Console.WriteLine($"[EmailService] ApiKey null: {apiKey == null}, FromEmail: {fromEmail}");
+            Console.WriteLine($"[EmailService] Sending to: {toEmail}");
 
             using var http = new HttpClient();
 
