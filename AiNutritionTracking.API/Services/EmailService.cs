@@ -3,6 +3,7 @@ using MailKit.Security;
 using Microsoft.Extensions.Configuration;
 using MimeKit;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AiNutritionTracking.API.Services
@@ -19,7 +20,8 @@ namespace AiNutritionTracking.API.Services
         public async Task SendEmailVerificationOtpAsync(string toEmail, string fullName, string otpCode)
         {
             var host = _configuration["Smtp:Host"];
-            var port = int.Parse(_configuration["Smtp:Port"] ?? "587");
+            var portStr = _configuration["Smtp:Port"];
+            int port = int.TryParse(portStr, out int parsedPort) ? parsedPort : 587; // Không lo bị nổ crash nếu thiếu Port
             var username = _configuration["Smtp:Username"];
             var password = _configuration["Smtp:Password"];
             var fromEmail = _configuration["Smtp:FromEmail"];
@@ -30,7 +32,6 @@ namespace AiNutritionTracking.API.Services
             message.To.Add(new MailboxAddress(fullName, toEmail));
             message.Subject = "Mã xác thực tài khoản - AiNutritionTracking";
 
-            // Sửa lại giao diện email hiển thị mã OTP
             message.Body = new TextPart("html")
             {
                 Text = $@"
@@ -45,21 +46,43 @@ namespace AiNutritionTracking.API.Services
                         <p>Nếu bạn không thực hiện việc đăng ký này, vui lòng bỏ qua email.</p>
                         <br/>
                         <p>Trân trọng,<br/>Đội ngũ AiNutritionTracking</p>
-                    </div>
-                "
+                    </div>"
             };
 
             using var client = new SmtpClient();
 
-            await client.ConnectAsync(host, port, SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(username, password);
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
+            // 🚨 SỬA CHÍ MẠNG 1: Đặt giới hạn Timeout kết nối tối đa là 10 giây
+            client.Timeout = 10000;
+
+            try
+            {
+                // Sử dụng CancellationTokenSource để ép hủy Task nếu Mail Server phản hồi quá lâu
+                using var cts = new CancellationTokenSource(10000);
+
+                await client.ConnectAsync(host, port, SecureSocketOptions.StartTls, cts.Token);
+                await client.AuthenticateAsync(username, password, cts.Token);
+                await client.SendAsync(message, cts.Token);
+            }
+            catch (Exception ex)
+            {
+                // 🚨 SỬA CHÍ MẠNG 2: Ghi log lỗi ra Render chứ không để nó tự treo ngậm ngùi
+                Console.WriteLine($"[EmailService Error]: Gửi mail OTP thất bại. Chi tiết: {ex.Message}");
+                throw; // Ném lỗi ra ngoài để tầng Controller biết đường xử lý (trả về lỗi rõ ràng thay vì loading vô tận)
+            }
+            finally
+            {
+                if (client.IsConnected)
+                {
+                    await client.DisconnectAsync(true);
+                }
+            }
         }
+
         public async Task SendPasswordResetEmailAsync(string toEmail, string fullName, string resetLink)
         {
             var host = _configuration["Smtp:Host"];
-            var port = int.Parse(_configuration["Smtp:Port"] ?? "587");
+            var portStr = _configuration["Smtp:Port"];
+            int port = int.TryParse(portStr, out int parsedPort) ? parsedPort : 587;
             var username = _configuration["Smtp:Username"];
             var password = _configuration["Smtp:Password"];
             var fromEmail = _configuration["Smtp:FromEmail"];
@@ -87,10 +110,27 @@ namespace AiNutritionTracking.API.Services
             };
 
             using var client = new SmtpClient();
-            await client.ConnectAsync(host, port, MailKit.Security.SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(username, password);
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
+            client.Timeout = 10000; // Đặt giới hạn 10 giây
+
+            try
+            {
+                using var cts = new CancellationTokenSource(10000);
+                await client.ConnectAsync(host, port, SecureSocketOptions.StartTls, cts.Token);
+                await client.AuthenticateAsync(username, password, cts.Token);
+                await client.SendAsync(message, cts.Token);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[EmailService Error]: Gửi mail Reset Password thất bại. Chi tiết: {ex.Message}");
+                throw;
+            }
+            finally
+            {
+                if (client.IsConnected)
+                {
+                    await client.DisconnectAsync(true);
+                }
+            }
         }
     }
 }

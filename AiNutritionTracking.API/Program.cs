@@ -111,13 +111,11 @@ app.UseSwaggerUI(c =>
     //c.RoutePrefix = string.Empty;
 });
 
+app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 app.UseRouting();
-app.UseCors("AllowAll");
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 
 // 2. CẤU HÌNH NHẬN ĐỘNG PORT TỪ RENDER

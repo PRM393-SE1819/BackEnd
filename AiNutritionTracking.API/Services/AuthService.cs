@@ -127,7 +127,10 @@ namespace AiNutritionTracking.API.Services
             Random rand = new Random();
             string otpCode = rand.Next(100000, 999999).ToString();
             _memoryCache.Set(email, otpCode, TimeSpan.FromMinutes(5));
-            await _emailService.SendEmailVerificationOtpAsync(email, fullName, otpCode);
+            _ = _emailService.SendEmailVerificationOtpAsync(email, fullName, otpCode);
+
+            await Task.CompletedTask;
+
             return "Vui lòng kiểm tra email của bạn để lấy mã OTP (Có hiệu lực trong 5 phút).";
         }
 
@@ -210,17 +213,30 @@ namespace AiNutritionTracking.API.Services
             if (_memoryCache.TryGetValue(cooldownKey, out _))
                 return new AuthResponseDTO { Success = false, Message = "Bạn vừa gửi yêu cầu. Vui lòng thử lại sau vài phút." };
 
+            // 1. TẠO TOKEN MỚI
             var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))
                         .Replace("+", "-").Replace("/", "_").TrimEnd('=');
 
             var tokenKey = $"pwreset:{token}";
+            var userTokenTrackingKey = $"pwreset-active-token:{user.Email}";
+
+            // Nếu user này từng có một token reset trước đó chưa hết hạn, hủy nó đi luôn để tránh bị dùng link cũ
+            if (_memoryCache.TryGetValue(userTokenTrackingKey, out string? oldToken))
+            {
+                _memoryCache.Remove($"pwreset:{oldToken}");
+            }
+
+            // 2. LƯU VÀO CACHE (Hiệu lực 15 phút, cooldown nút bấm 60 giây)
             _memoryCache.Set(tokenKey, user.Email, TimeSpan.FromMinutes(15));
+            _memoryCache.Set(userTokenTrackingKey, token, TimeSpan.FromMinutes(15)); // Lưu vết tracking token hiện tại
             _memoryCache.Set(cooldownKey, true, TimeSpan.FromSeconds(60));
 
+            // 3. TẠO LINK FRONTEND VÀ GỬI MAIL CHẠY NGẦM
             var frontendUrl = _configuration["Frontend:PasswordResetUrl"] ?? _configuration["Frontend:BaseUrl"];
             var resetLink = $"{frontendUrl.TrimEnd('/')}/reset-password?token={Uri.EscapeDataString(token)}";
 
-            await _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
+            _ = _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
+
             return new AuthResponseDTO { Success = true, Message = "Nếu email tồn tại, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu trong email." };
         }
 
@@ -237,11 +253,15 @@ namespace AiNutritionTracking.API.Services
             if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
                 return new AuthResponseDTO { Success = false, Message = "Mật khẩu mới không hợp lệ (tối thiểu 6 ký tự)." };
 
+            //  BĂM MẬT KHẨU MỚI VÀ CẬP NHẬT DATABASE
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
+            // Đổi mật khẩu thành công thì dọn dẹp sạch sẽ Cache để không ai dùng lại Token này được nữa
             _memoryCache.Remove(tokenKey);
+            _memoryCache.Remove($"pwreset-active-token:{email}");
+
             return new AuthResponseDTO { Success = true, Message = "Đổi mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới." };
         }
     }
