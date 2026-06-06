@@ -25,7 +25,7 @@ namespace AiNutritionTracking.API.Services
             var payload = new
             {
                 from = "AiNutritionTracking <onboarding@resend.dev>",
-                to = new[] { toEmail },
+                to = new[] { "nguyenngocbaohann12@gmail.com" }, 
                 subject = subject,
                 html = bodyHtml
             };
