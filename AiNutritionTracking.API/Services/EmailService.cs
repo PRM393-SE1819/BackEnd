@@ -1,9 +1,7 @@
-﻿using MailKit.Net.Smtp;
-using MailKit.Security;
-using Microsoft.Extensions.Configuration;
-using MimeKit;
+﻿using Microsoft.Extensions.Configuration;
 using System;
-using System.Threading;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
 
 namespace AiNutritionTracking.API.Services
@@ -19,42 +17,33 @@ namespace AiNutritionTracking.API.Services
 
         private async Task SendMailAsync(string toEmail, string fullName, string subject, string bodyHtml)
         {
-            var host = _configuration["Smtp:Host"];
-            var portStr = _configuration["Smtp:Port"] ?? "465"; // Mặc định dùng 465 cho SSL
-            int port = int.Parse(portStr);
-            var username = _configuration["Smtp:Username"];
-            var password = _configuration["Smtp:Password"];
-            var fromEmail = _configuration["Smtp:FromEmail"];
-            var fromName = _configuration["Smtp:FromName"] ?? "AiNutritionTracking";
+            var apiKey = _configuration["Resend:ApiKey"];
 
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(fromName, fromEmail));
-            message.To.Add(new MailboxAddress(fullName, toEmail));
-            message.Subject = subject;
-            message.Body = new TextPart("html") { Text = bodyHtml };
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 
-            using var client = new SmtpClient();
-
-            // Tăng timeout lên 20 giây cho môi trường cloud
-            client.Timeout = 20000;
+            var payload = new
+            {
+                from = "AiNutritionTracking <onboarding@resend.dev>",
+                to = new[] { toEmail },
+                subject = subject,
+                html = bodyHtml
+            };
 
             try
             {
-                using var cts = new CancellationTokenSource(20000);
+                var response = await http.PostAsJsonAsync("https://api.resend.com/emails", payload);
 
-                // Kết nối dùng SSL trực tiếp (Port 465) thay vì StartTls
-                await client.ConnectAsync(host, port, SecureSocketOptions.SslOnConnect, cts.Token);
-                await client.AuthenticateAsync(username, password, cts.Token);
-                await client.SendAsync(message, cts.Token);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"Resend error: {error}");
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[EmailService Error]: Gửi mail thất bại. Chi tiết: {ex.Message}");
                 throw;
-            }
-            finally
-            {
-                await client.DisconnectAsync(true);
             }
         }
 
