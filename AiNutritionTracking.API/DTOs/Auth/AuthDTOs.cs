@@ -33,15 +33,14 @@ namespace AiNutritionTracking.API.DTOs.Auth
        
         public string FullName { get; set; } = null!;
     }
-    public class VerifyOtpRequestDTO
+    public class VerifyEmailRequestDTO
     {
         [Required, EmailAddress]
         public string Email { get; set; } = null!;
-
         [Required]
-        public string OtpCode { get; set; } = null!;
+        public string Token { get; set; } = null!;
     }
-    public class ResendOtpRequestDTO
+    public class ResendVerificationEmailRequestDTO
     {
         [Required, EmailAddress]
         public string Email { get; set; } = null!;

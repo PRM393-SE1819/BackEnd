@@ -6,8 +6,8 @@ namespace AiNutritionTracking.API.Services
     public interface IAuthService
     {
         Task<AuthResponseDTO> RegisterAsync(RegisterRequestDTO request);
-        Task<AuthResponseDTO> VerifyEmailAsync(VerifyOtpRequestDTO request);
-        Task<AuthResponseDTO> ResendOtpAsync(ResendOtpRequestDTO request);
+        Task<AuthResponseDTO> VerifyEmailAsync(VerifyEmailRequestDTO request);
+        Task<AuthResponseDTO> ResendVerificationEmailAsync(ResendVerificationEmailRequestDTO request);
         Task<LoginResponseDTO> LoginAsync(LoginRequestDTO request);
         Task<GoogleLoginResponseDTO> GoogleLoginAsync(GoogleLoginRequestDTO request);
         Task RevokeTokenAsync(string jti, DateTime expiresAt);
