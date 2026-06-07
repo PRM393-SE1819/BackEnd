@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using AiNutritionTracking.API.Data;
 using AiNutritionTracking.API.DTOs.Auth;
+using AiNutritionTracking.API.Helpers;
 using AiNutritionTracking.API.Models;
 using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
@@ -39,11 +40,18 @@ namespace AiNutritionTracking.API.Services
                     existingUser.Username = request.Username;
                     existingUser.UpdatedAt = DateTime.UtcNow;
 
+                    var newToken = TokenHelper.GenerateSecureToken();
+                    existingUser.EmailVerificationTokenHash = TokenHelper.HashToken(newToken);
+                    existingUser.EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+
                     _context.Users.Update(existingUser);
                     await _context.SaveChangesAsync();
 
-                    string msg = await GenerateAndSendOtp(existingUser.Email, existingUser.FullName);
-                    return new AuthResponseDTO { Success = true, Message = msg };
+                    var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:8080";
+                    var verificationUrl = $"{frontendUrl.TrimEnd('/')}/verify-email?email={Uri.EscapeDataString(existingUser.Email)}&token={Uri.EscapeDataString(newToken)}";
+                    _ = _emailService.SendEmailVerificationAsync(existingUser.Email, existingUser.FullName, verificationUrl);
+
+                    return new AuthResponseDTO { Success = true, Message = "Vui lòng kiểm tra email để xác thực tài khoản." };
                 }
                 return new AuthResponseDTO { Success = false, Message = "Email đã được sử dụng." };
             }
@@ -52,15 +60,17 @@ namespace AiNutritionTracking.API.Services
             if (existingUsername != null)
                 return new AuthResponseDTO { Success = false, Message = "Username đã tồn tại." };
 
-            string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            var token = TokenHelper.GenerateSecureToken();
 
             var newUser = new User
             {
                 Email = request.Email,
                 Username = request.Username,
                 FullName = request.FullName,
-                PasswordHash = passwordHash,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 EmailVerified = false,
+                EmailVerificationTokenHash = TokenHelper.HashToken(token),
+                EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24),
                 CreatedAt = DateTime.UtcNow,
                 IsDeleted = false
             };
@@ -68,42 +78,60 @@ namespace AiNutritionTracking.API.Services
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
 
-            string message = await GenerateAndSendOtp(newUser.Email, newUser.FullName);
-            return new AuthResponseDTO { Success = true, Message = message };
+            var baseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:8080";
+            var url = $"{baseUrl.TrimEnd('/')}/verify-email?email={Uri.EscapeDataString(newUser.Email)}&token={Uri.EscapeDataString(token)}";
+            _ = _emailService.SendEmailVerificationAsync(newUser.Email, newUser.FullName, url);
+
+            return new AuthResponseDTO { Success = true, Message = "Vui lòng kiểm tra email để xác thực tài khoản." };
         }
 
-        public async Task<AuthResponseDTO> VerifyEmailAsync(VerifyOtpRequestDTO request)
-        {
-            if (_memoryCache.TryGetValue(request.Email, out string savedOtp))
-            {
-                if (savedOtp == request.OtpCode)
-                {
-                    var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-                    if (user != null)
-                    {
-                        user.EmailVerified = true;
-                        user.UpdatedAt = DateTime.UtcNow;
-                        await _context.SaveChangesAsync();
-                        _memoryCache.Remove(request.Email);
-
-                        return new AuthResponseDTO { Success = true, Message = "Xác thực Email thành công! Giờ bạn có thể đăng nhập." };
-                    }
-                    return new AuthResponseDTO { Success = false, Message = "Không tìm thấy người dùng trong hệ thống." };
-                }
-                return new AuthResponseDTO { Success = false, Message = "Mã OTP không chính xác!" };
-            }
-            return new AuthResponseDTO { Success = false, Message = "Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng bấm gửi lại mã!" };
-        }
-
-        public async Task<AuthResponseDTO> ResendOtpAsync(ResendOtpRequestDTO request)
+        public async Task<AuthResponseDTO> VerifyEmailAsync(VerifyEmailRequestDTO request)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-            if (user == null) return new AuthResponseDTO { Success = false, Message = "Email chưa được đăng ký trong hệ thống." };
+            if (user == null)
+                return new AuthResponseDTO { Success = false, Message = "Không tìm thấy người dùng." };
 
-            if (user.EmailVerified == true) return new AuthResponseDTO { Success = false, Message = "Tài khoản này đã được xác thực rồi." };
+            if (user.EmailVerified == true)
+                return new AuthResponseDTO { Success = true, Message = "Tài khoản đã được xác thực." };
 
-            string message = await GenerateAndSendOtp(user.Email, user.FullName);
-            return new AuthResponseDTO { Success = true, Message = message };
+            if (string.IsNullOrWhiteSpace(user.EmailVerificationTokenHash))
+                return new AuthResponseDTO { Success = false, Message = "Token xác thực không hợp lệ." };
+
+            if (user.EmailVerificationTokenExpiresAt == null || user.EmailVerificationTokenExpiresAt < DateTime.UtcNow)
+                return new AuthResponseDTO { Success = false, Message = "Token xác thực đã hết hạn." };
+
+            if (!TokenHelper.VerifyToken(request.Token, user.EmailVerificationTokenHash))
+                return new AuthResponseDTO { Success = false, Message = "Token xác thực không hợp lệ." };
+
+            user.EmailVerified = true;
+            user.EmailVerificationTokenHash = null;
+            user.EmailVerificationTokenExpiresAt = null;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return new AuthResponseDTO { Success = true, Message = "Xác thực Email thành công! Giờ bạn có thể đăng nhập." };
+        }
+
+        public async Task<AuthResponseDTO> ResendVerificationEmailAsync(ResendVerificationEmailRequestDTO request)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (user == null)
+                return new AuthResponseDTO { Success = false, Message = "Email chưa được đăng ký trong hệ thống." };
+
+            if (user.EmailVerified == true)
+                return new AuthResponseDTO { Success = false, Message = "Tài khoản này đã được xác thực rồi." };
+
+            var token = TokenHelper.GenerateSecureToken();
+            user.EmailVerificationTokenHash = TokenHelper.HashToken(token);
+            user.EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            var baseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:8080";
+            var url = $"{baseUrl.TrimEnd('/')}/verify-email?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
+            _ = _emailService.SendEmailVerificationAsync(user.Email, user.FullName, url);
+
+            return new AuthResponseDTO { Success = true, Message = "Vui lòng kiểm tra email để xác thực tài khoản." };
         }
 
         public async Task<LoginResponseDTO> LoginAsync(LoginRequestDTO request)
@@ -122,23 +150,11 @@ namespace AiNutritionTracking.API.Services
             return new LoginResponseDTO { Success = true, Message = "Đăng nhập thành công.", Token = token };
         }
 
-        private async Task<string> GenerateAndSendOtp(string email, string fullName)
-        {
-            Random rand = new Random();
-            string otpCode = rand.Next(100000, 999999).ToString();
-            _memoryCache.Set(email, otpCode, TimeSpan.FromMinutes(5));
-            _ = _emailService.SendEmailVerificationOtpAsync(email, fullName, otpCode);
-
-            await Task.CompletedTask;
-
-            return "Vui lòng kiểm tra email của bạn để lấy mã OTP (Có hiệu lực trong 5 phút).";
-        }
-
         public async Task<GoogleLoginResponseDTO> GoogleLoginAsync(GoogleLoginRequestDTO request)
         {
             var clientId = _configuration["Google:ClientId"];
             if (string.IsNullOrEmpty(clientId))
-                throw new InvalidOperationException("Đăng nhập bằng Google hiện không khả dụng. Vui lòng liên hệ quản trị viên hoặc thử lại sau.");
+                throw new InvalidOperationException("Đăng nhập bằng Google hiện không khả dụng.");
 
             GoogleJsonWebSignature.Payload payload;
             try
@@ -148,18 +164,18 @@ namespace AiNutritionTracking.API.Services
             }
             catch (InvalidJwtException)
             {
-                throw new InvalidOperationException("Thông tin đăng nhập từ Google không hợp lệ hoặc đã thay đổi. Vui lòng đăng xuất khỏi Google rồi thử đăng nhập lại bằng Google.");
+                throw new InvalidOperationException("Thông tin đăng nhập từ Google không hợp lệ.");
             }
             catch (Exception)
             {
-                throw new InvalidOperationException("Không thể xác thực thông tin đăng nhập từ Google hiện tại. Hãy thử lại sau hoặc kiểm tra kết nối mạng.");
+                throw new InvalidOperationException("Không thể xác thực thông tin đăng nhập từ Google.");
             }
 
             if (payload == null || string.IsNullOrEmpty(payload.Email))
-                throw new InvalidOperationException("Không tìm thấy email từ Google. Vui lòng sử dụng tài khoản Google có email hợp lệ và đã xác minh.");
+                throw new InvalidOperationException("Không tìm thấy email từ Google.");
 
             if (payload.EmailVerified != true)
-                throw new InvalidOperationException("Email Google của bạn chưa được xác minh. Vui lòng xác minh email trong cài đặt Google rồi thử lại.");
+                throw new InvalidOperationException("Email Google chưa được xác minh.");
 
             var email = payload.Email.Trim().ToLower();
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
@@ -190,7 +206,6 @@ namespace AiNutritionTracking.API.Services
 
             var accessToken = _jwtService.GenerateToken(user);
             var expireMinutes = int.Parse(_configuration["Jwt:ExpireMinutes"] ?? "60");
-
             return new GoogleLoginResponseDTO { AccessToken = accessToken, ExpiresInMinutes = expireMinutes };
         }
 
@@ -213,28 +228,21 @@ namespace AiNutritionTracking.API.Services
             if (_memoryCache.TryGetValue(cooldownKey, out _))
                 return new AuthResponseDTO { Success = false, Message = "Bạn vừa gửi yêu cầu. Vui lòng thử lại sau vài phút." };
 
-            // 1. TẠO TOKEN MỚI
             var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))
                         .Replace("+", "-").Replace("/", "_").TrimEnd('=');
 
             var tokenKey = $"pwreset:{token}";
             var userTokenTrackingKey = $"pwreset-active-token:{user.Email}";
 
-            // Nếu user này từng có một token reset trước đó chưa hết hạn, hủy nó đi luôn để tránh bị dùng link cũ
             if (_memoryCache.TryGetValue(userTokenTrackingKey, out string? oldToken))
-            {
                 _memoryCache.Remove($"pwreset:{oldToken}");
-            }
 
-            // 2. LƯU VÀO CACHE (Hiệu lực 15 phút, cooldown nút bấm 60 giây)
             _memoryCache.Set(tokenKey, user.Email, TimeSpan.FromMinutes(15));
-            _memoryCache.Set(userTokenTrackingKey, token, TimeSpan.FromMinutes(15)); // Lưu vết tracking token hiện tại
+            _memoryCache.Set(userTokenTrackingKey, token, TimeSpan.FromMinutes(15));
             _memoryCache.Set(cooldownKey, true, TimeSpan.FromSeconds(60));
 
-            // 3. TẠO LINK FRONTEND VÀ GỬI MAIL CHẠY NGẦM
             var frontendUrl = _configuration["Frontend:PasswordResetUrl"] ?? _configuration["Frontend:BaseUrl"];
             var resetLink = $"{frontendUrl.TrimEnd('/')}/reset-password?token={Uri.EscapeDataString(token)}";
-
             _ = _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
 
             return new AuthResponseDTO { Success = true, Message = "Nếu email tồn tại, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu trong email." };
@@ -253,12 +261,10 @@ namespace AiNutritionTracking.API.Services
             if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
                 return new AuthResponseDTO { Success = false, Message = "Mật khẩu mới không hợp lệ (tối thiểu 6 ký tự)." };
 
-            //  BĂM MẬT KHẨU MỚI VÀ CẬP NHẬT DATABASE
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            // Đổi mật khẩu thành công thì dọn dẹp sạch sẽ Cache để không ai dùng lại Token này được nữa
             _memoryCache.Remove(tokenKey);
             _memoryCache.Remove($"pwreset-active-token:{email}");
 

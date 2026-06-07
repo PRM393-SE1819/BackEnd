@@ -26,17 +26,17 @@ namespace AiNutritionTracking.API.Controllers
         }
 
         [HttpPost("verify-email")]
-        public async Task<IActionResult> VerifyEmail([FromBody] VerifyOtpRequestDTO request)
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequestDTO request)
         {
             var result = await _authService.VerifyEmailAsync(request);
             if (result.Success) return Ok(new { message = result.Message });
             return BadRequest(new { message = result.Message });
         }
 
-        [HttpPost("resend-otp")]
-        public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequestDTO request)
+        [HttpPost("resend-verification-email")]
+        public async Task<IActionResult> ResendVerificationEmail([FromBody] ResendVerificationEmailRequestDTO request)
         {
-            var result = await _authService.ResendOtpAsync(request);
+            var result = await _authService.ResendVerificationEmailAsync(request);
             if (result.Success) return Ok(new { message = result.Message });
             return BadRequest(new { message = result.Message });
         }

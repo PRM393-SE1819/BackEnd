@@ -1,7 +1,8 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using MailKit.Net.Smtp;
+using MailKit.Security;
+using Microsoft.Extensions.Configuration;
+using MimeKit;
 using System;
-using System.Collections.Generic;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace AiNutritionTracking.API.Services
@@ -17,50 +18,46 @@ namespace AiNutritionTracking.API.Services
 
         private async Task SendMailAsync(string toEmail, string fullName, string subject, string bodyHtml)
         {
-            var apiKey = _configuration["ElasticEmail:ApiKey"];
-            var fromEmail = _configuration["ElasticEmail:FromEmail"];
-            Console.WriteLine($"[EmailService] ApiKey null: {apiKey == null}, FromEmail: {fromEmail}");
-            Console.WriteLine($"[EmailService] Sending to: {toEmail}");
+            var host = _configuration["Smtp:Host"];
+            var port = int.Parse(_configuration["Smtp:Port"] ?? "587");
+            var username = _configuration["Smtp:Username"];
+            var password = _configuration["Smtp:Password"];
+            var fromEmail = _configuration["Smtp:FromEmail"];
+            var fromName = _configuration["Smtp:FromName"] ?? "AiNutritionTracking";
 
-            using var http = new HttpClient();
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(fromName, fromEmail));
+            message.To.Add(new MailboxAddress(fullName, toEmail));
+            message.Subject = subject;
+            message.Body = new TextPart("html") { Text = bodyHtml };
 
-            var payload = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("apikey", apiKey),
-                new KeyValuePair<string, string>("from", fromEmail),
-                new KeyValuePair<string, string>("fromName", "AiNutritionTracking"),
-                new KeyValuePair<string, string>("to", toEmail),
-                new KeyValuePair<string, string>("subject", subject),
-                new KeyValuePair<string, string>("bodyHtml", bodyHtml),
-                new KeyValuePair<string, string>("isTransactional", "true")
-            });
-
+            using var client = new SmtpClient();
             try
             {
-                var response = await http.PostAsync("https://api.elasticemail.com/v2/email/send", payload);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"ElasticEmail error: {error}");
-                }
+                await client.ConnectAsync(host, port, SecureSocketOptions.StartTls);
+                await client.AuthenticateAsync(username, password);
+                await client.SendAsync(message);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[EmailService Error]: Gửi mail thất bại. Chi tiết: {ex.Message}");
                 throw;
             }
+            finally
+            {
+                await client.DisconnectAsync(true);
+            }
         }
 
-        public async Task SendEmailVerificationOtpAsync(string toEmail, string fullName, string otpCode)
+        public async Task SendEmailVerificationAsync(string toEmail, string fullName, string verificationUrl)
         {
             var body = $@"<div style='font-family: Arial, sans-serif; max-width: 600px;'>
                         <h2>Xin chào {fullName},</h2>
-                        <p>Dưới đây là mã OTP của bạn:</p>
-                        <h1 style='color: #0078d4;'>{otpCode}</h1>
-                        <p>Mã có hiệu lực trong 5 phút.</p>
+                        <p>Vui lòng click vào link bên dưới để xác thực tài khoản:</p>
+                        <a href='{verificationUrl}' style='background:#0078d4;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;'>Xác thực tài khoản</a>
+                        <p>Link có hiệu lực trong 24 giờ.</p>
                       </div>";
-            await SendMailAsync(toEmail, fullName, "Mã xác thực tài khoản", body);
+            await SendMailAsync(toEmail, fullName, "Xác thực tài khoản", body);
         }
 
         public async Task SendPasswordResetEmailAsync(string toEmail, string fullName, string resetLink)

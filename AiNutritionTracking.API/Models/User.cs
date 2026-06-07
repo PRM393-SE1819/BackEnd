@@ -54,6 +54,8 @@ public partial class User
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+    public string? EmailVerificationTokenHash { get; set; }
+    public DateTime? EmailVerificationTokenExpiresAt { get; set; }
 
     public virtual ICollection<AichatSession> AichatSessions { get; set; } = new List<AichatSession>();
 
