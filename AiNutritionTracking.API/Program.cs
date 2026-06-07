@@ -50,6 +50,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IHealthProfileService, HealthProfileService>();
 builder.Services.AddScoped<IFoodService, FoodService>();
 builder.Services.AddScoped<IMealService, MealService>();
+builder.Services.AddScoped<INutritionService, NutritionService>();
 
 // In-memory cache (used for OTP storage)
 builder.Services.AddMemoryCache();
