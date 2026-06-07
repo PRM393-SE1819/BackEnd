@@ -91,5 +91,9 @@ public partial class User
 
     public virtual ICollection<WaterLog> WaterLogs { get; set; } = new List<WaterLog>();
 
+    public virtual ICollection<WaterGoal> WaterGoals { get; set; } = new List<WaterGoal>();
+
+    public virtual ICollection<WaterReminder> WaterReminders { get; set; } = new List<WaterReminder>();
+
     public virtual ICollection<WeightLog> WeightLogs { get; set; } = new List<WeightLog>();
 }

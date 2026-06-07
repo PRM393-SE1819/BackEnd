@@ -58,6 +58,10 @@ public partial class AinutritiontrackingContext : DbContext
 
     public virtual DbSet<WaterLog> WaterLogs { get; set; }
 
+    public virtual DbSet<WaterGoal> WaterGoals { get; set; }
+
+    public virtual DbSet<WaterReminder> WaterReminders { get; set; }
+
     public virtual DbSet<WeightLog> WeightLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -465,6 +469,35 @@ public partial class AinutritiontrackingContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.WaterLogs)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("WaterLogs_UserId_fkey");
+        });
+
+        modelBuilder.Entity<WaterGoal>(entity =>
+        {
+            entity.HasKey(e => e.GoalId).HasName("WaterGoals_pkey");
+
+            entity.Property(e => e.DailyTargetMl).HasColumnName("DailyTargetML");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("timestamp without time zone");
+
+            entity.HasOne(d => d.User).WithMany(p => p.WaterGoals)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("WaterGoals_UserId_fkey");
+        });
+
+        modelBuilder.Entity<WaterReminder>(entity =>
+        {
+            entity.HasKey(e => e.ReminderId).HasName("WaterReminders_pkey");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone");
+
+            entity.HasOne(d => d.User).WithMany(p => p.WaterReminders)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("WaterReminders_UserId_fkey");
         });
 
         modelBuilder.Entity<WeightLog>(entity =>
