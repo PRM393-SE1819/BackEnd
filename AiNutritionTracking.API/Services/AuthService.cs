@@ -49,7 +49,7 @@ namespace AiNutritionTracking.API.Services
 
                     var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:8080";
                     var verificationUrl = $"{frontendUrl.TrimEnd('/')}/verify-email?email={Uri.EscapeDataString(existingUser.Email)}&token={Uri.EscapeDataString(newToken)}";
-                    _ = _emailService.SendEmailVerificationAsync(existingUser.Email, existingUser.FullName, verificationUrl);
+                    await _emailService.SendEmailVerificationAsync(existingUser.Email, existingUser.FullName, verificationUrl);
 
                     return new AuthResponseDTO { Success = true, Message = "Vui lòng kiểm tra email để xác thực tài khoản." };
                 }
@@ -80,7 +80,7 @@ namespace AiNutritionTracking.API.Services
 
             var baseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:8080";
             var url = $"{baseUrl.TrimEnd('/')}/verify-email?email={Uri.EscapeDataString(newUser.Email)}&token={Uri.EscapeDataString(token)}";
-            _ = _emailService.SendEmailVerificationAsync(newUser.Email, newUser.FullName, url);
+            await _emailService.SendEmailVerificationAsync(newUser.Email, newUser.FullName, url);
 
             return new AuthResponseDTO { Success = true, Message = "Vui lòng kiểm tra email để xác thực tài khoản." };
         }
@@ -129,7 +129,7 @@ namespace AiNutritionTracking.API.Services
 
             var baseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:8080";
             var url = $"{baseUrl.TrimEnd('/')}/verify-email?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
-            _ = _emailService.SendEmailVerificationAsync(user.Email, user.FullName, url);
+            await _emailService.SendEmailVerificationAsync(user.Email, user.FullName, url);
 
             return new AuthResponseDTO { Success = true, Message = "Vui lòng kiểm tra email để xác thực tài khoản." };
         }
@@ -243,7 +243,7 @@ namespace AiNutritionTracking.API.Services
 
             var frontendUrl = _configuration["Frontend:PasswordResetUrl"] ?? _configuration["Frontend:BaseUrl"];
             var resetLink = $"{frontendUrl.TrimEnd('/')}/reset-password?token={Uri.EscapeDataString(token)}";
-            _ = _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
+            _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
 
             return new AuthResponseDTO { Success = true, Message = "Nếu email tồn tại, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu trong email." };
         }
