@@ -2,7 +2,7 @@
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 USER app
 WORKDIR /app
-EXPOSE 10000
+EXPOSE 1000
 
 # Giai đoạn 2: Build SDK
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
@@ -27,5 +27,5 @@ RUN dotnet publish "./AiNutritionTracking.API.csproj" -c $BUILD_CONFIGURATION -o
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENV ASPNETCORE_URLS=http://+:10000
+ENV ASPNETCORE_URLS=http://+:1000
 ENTRYPOINT ["dotnet", "AiNutritionTracking.API.dll"]

@@ -124,7 +124,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 // 2. CẤU HÌNH NHẬN ĐỘNG PORT TỪ RENDER
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+var port = Environment.GetEnvironmentVariable("PORT") ?? "1000";
 app.Urls.Add($"http://*:{port}");
 
 app.Run();
