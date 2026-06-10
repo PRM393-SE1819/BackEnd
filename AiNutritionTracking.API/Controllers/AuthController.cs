@@ -25,9 +25,11 @@ namespace AiNutritionTracking.API.Controllers
             return BadRequest(new { message = result.Message });
         }
 
-        [HttpPost("verify-email")]
-        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequestDTO request)
+        
+        [HttpGet("verify-email")]
+        public async Task<IActionResult> VerifyEmail([FromQuery] string email, [FromQuery] string token)
         {
+            var request = new VerifyEmailRequestDTO { Email = email, Token = token };
             var result = await _authService.VerifyEmailAsync(request);
             if (result.Success) return Ok(new { message = result.Message });
             return BadRequest(new { message = result.Message });
