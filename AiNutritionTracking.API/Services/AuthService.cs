@@ -243,7 +243,7 @@ namespace AiNutritionTracking.API.Services
 
             var frontendUrl = _configuration["Frontend:PasswordResetUrl"] ?? _configuration["Frontend:BaseUrl"];
             var resetLink = $"{frontendUrl.TrimEnd('/')}/reset-password?token={Uri.EscapeDataString(token)}";
-            _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
+            await _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
 
             return new AuthResponseDTO { Success = true, Message = "Nếu email tồn tại, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu trong email." };
         }
