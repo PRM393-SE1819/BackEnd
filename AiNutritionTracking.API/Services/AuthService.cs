@@ -44,6 +44,11 @@ namespace AiNutritionTracking.API.Services
                     existingUser.EmailVerificationTokenHash = TokenHelper.HashToken(newToken);
                     existingUser.EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
 
+                    #if DEBUG
+                    // Auto-verify in Development mode
+                    existingUser.EmailVerified = true;
+                    #endif
+
                     _context.Users.Update(existingUser);
                     await _context.SaveChangesAsync();
 
@@ -68,7 +73,11 @@ namespace AiNutritionTracking.API.Services
                 Username = request.Username,
                 FullName = request.FullName,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                #if DEBUG
+                EmailVerified = true, // Auto-verify in Development
+                #else
                 EmailVerified = false,
+                #endif
                 EmailVerificationTokenHash = TokenHelper.HashToken(token),
                 EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24),
                 CreatedAt = DateTime.UtcNow,

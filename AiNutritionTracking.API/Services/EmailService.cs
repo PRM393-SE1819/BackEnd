@@ -1,4 +1,4 @@
-﻿using MailKit.Net.Smtp;
+﻿﻿using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Configuration;
 using MimeKit;
@@ -41,7 +41,10 @@ namespace AiNutritionTracking.API.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"[EmailService Error]: Gửi mail thất bại. Chi tiết: {ex.Message}");
+                // Only rethrow in Production
+                #if !DEBUG
                 throw;
+                #endif
             }
             finally
             {
