@@ -1,13 +1,21 @@
+using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using AiNutritionTracking.API.Data;
+using AiNutritionTracking.API.DTOs.AI;
+using AiNutritionTracking.API.Helpers;
+using AiNutritionTracking.API.Repositories;
 using AiNutritionTracking.API.Services;
 using AiNutritionTracking.API.Services.Admin;
 using AiNutritionTracking.API.Services.Admin.Interfaces;
+using AiNutritionTracking.API.Validators.AI;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Text;
+
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
@@ -43,6 +51,34 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddDbContext<AinutritiontrackingContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Configure Groq settings
+builder.Services.Configure<GroqSettings>(builder.Configuration.GetSection("GroqSettings"));
+builder.Services.AddHttpClient<IAIService, AIService>();
+builder.Services.Configure<PexelsSettings>(builder.Configuration.GetSection("PexelsSettings"));
+builder.Services.AddHttpClient<IPexelsService, PexelsService>();
+
+// AI Repository
+builder.Services.AddScoped<IAIRepository, AIRepository>();
+
+// FluentValidation
+builder.Services.AddScoped<IValidator<ChatRequestDto>, ChatRequestValidator>();
+builder.Services.AddScoped<IValidator<CalorieEstimateRequestDto>, CalorieEstimateRequestValidator>();
+builder.Services.AddScoped<IValidator<MealRecommendationRequestDto>, MealRecommendationRequestValidator>();
+builder.Services.AddScoped<IValidator<MealPlanRequestDto>, MealPlanRequestValidator>();
+
+// Rate limiting — 10 requests per minute per user/IP on AI endpoints
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("ai-policy", cfg =>
+    {
+        cfg.PermitLimit         = 10;
+        cfg.Window              = TimeSpan.FromMinutes(1);
+        cfg.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        cfg.QueueLimit          = 2;
+    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 // Application services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -122,6 +158,7 @@ app.UseSwaggerUI(c =>
 app.UseCors("AllowAll");
 //app.UseHttpsRedirection();
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
