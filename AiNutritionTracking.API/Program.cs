@@ -1,11 +1,13 @@
-using System.Text;
 using AiNutritionTracking.API.Data;
 using AiNutritionTracking.API.Services;
+using AiNutritionTracking.API.Services.Admin;
+using AiNutritionTracking.API.Services.Admin.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Text;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
@@ -53,7 +55,8 @@ builder.Services.AddScoped<IMealService, MealService>();
 builder.Services.AddScoped<INutritionService, NutritionService>();
 builder.Services.AddScoped<IWaterService, WaterService>();
 builder.Services.AddScoped<IWeightService, WeightService>();
-
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+builder.Services.AddScoped<ICommunityModerationService, CommunityModerationService>();
 // In-memory cache (used for OTP storage)
 builder.Services.AddMemoryCache();
 
