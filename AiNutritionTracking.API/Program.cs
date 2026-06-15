@@ -25,6 +25,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "AiNutritionTracking API", Version = "v1" });
+    c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -63,6 +64,8 @@ builder.Services.AddScoped<IValidator<ChatRequestDto>, ChatRequestValidator>();
 builder.Services.AddScoped<IValidator<CalorieEstimateRequestDto>, CalorieEstimateRequestValidator>();
 builder.Services.AddScoped<IValidator<MealRecommendationRequestDto>, MealRecommendationRequestValidator>();
 builder.Services.AddScoped<IValidator<MealPlanRequestDto>, MealPlanRequestValidator>();
+builder.Services.AddScoped<IValidator<BodyFatImageRequestDto>, BodyFatImageRequestValidator>();
+builder.Services.AddScoped<IValidator<BodyFatMeasurementRequestDto>, BodyFatMeasurementRequestValidator>();
 
 // Rate limiting — 10 requests per minute per user/IP on AI endpoints
 builder.Services.AddRateLimiter(options =>
@@ -88,6 +91,7 @@ builder.Services.AddScoped<IMealService, MealService>();
 builder.Services.AddScoped<INutritionService, NutritionService>();
 builder.Services.AddScoped<IWaterService, WaterService>();
 builder.Services.AddScoped<IWeightService, WeightService>();
+builder.Services.AddHttpClient<IBodyFatAnalysisService, BodyFatAnalysisService>();
 
 // In-memory cache (used for OTP storage)
 builder.Services.AddMemoryCache();

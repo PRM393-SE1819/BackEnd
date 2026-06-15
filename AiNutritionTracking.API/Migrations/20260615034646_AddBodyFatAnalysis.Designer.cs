@@ -3,6 +3,7 @@ using System;
 using AiNutritionTracking.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AiNutritionTracking.API.Migrations
 {
     [DbContext(typeof(AinutritiontrackingContext))]
-    partial class AinutritiontrackingContextModelSnapshot : ModelSnapshot
+    [Migration("20260615034646_AddBodyFatAnalysis")]
+    partial class AddBodyFatAnalysis
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
