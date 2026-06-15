@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using AiNutritionTracking.API.Configurations;
 using AiNutritionTracking.API.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -64,8 +65,11 @@ public partial class AinutritiontrackingContext : DbContext
 
     public virtual DbSet<WeightLog> WeightLogs { get; set; }
 
+    public virtual DbSet<BodyFatAnalysis> BodyFatAnalyses { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.ApplyConfiguration(new BodyFatAnalysisConfiguration());
         modelBuilder.Entity<AichatMessage>(entity =>
         {
             entity.HasKey(e => e.MessageId).HasName("AIChatMessages_pkey");

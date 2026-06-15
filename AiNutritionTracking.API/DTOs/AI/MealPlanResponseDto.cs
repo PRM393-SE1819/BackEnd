@@ -1,4 +1,4 @@
-﻿namespace AiNutritionTracking.API.DTOs.AI;
+﻿﻿namespace AiNutritionTracking.API.DTOs.AI;
 
 public class MealPlanResponseDto
 {
