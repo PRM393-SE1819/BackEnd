@@ -72,4 +72,44 @@ public class AIRepository : IAIRepository
             .Take(pageSize)
             .ToListAsync();
     }
+
+    public async Task<List<Airequest>> GetChatHistoryAsync(int userId, int page = 1, int pageSize = 20)
+    {
+        return await _context.Airequests
+            .Include(r => r.Airesponses)
+            .Where(r => r.UserId == userId && r.RequestType == "Chat")
+            .OrderByDescending(r => r.RequestedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<bool> DeleteChatRecordAsync(int requestId, int userId)
+    {
+        var record = await _context.Airequests
+            .Include(r => r.Airesponses)
+            .FirstOrDefaultAsync(r => r.RequestId == requestId && r.UserId == userId && r.RequestType == "Chat");
+
+        if (record is null) return false;
+
+        _context.Airesponses.RemoveRange(record.Airesponses);
+        _context.Airequests.Remove(record);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<int> DeleteAllChatHistoryAsync(int userId)
+    {
+        var records = await _context.Airequests
+            .Include(r => r.Airesponses)
+            .Where(r => r.UserId == userId && r.RequestType == "Chat")
+            .ToListAsync();
+
+        foreach (var record in records)
+            _context.Airesponses.RemoveRange(record.Airesponses);
+
+        _context.Airequests.RemoveRange(records);
+        await _context.SaveChangesAsync();
+        return records.Count;
+    }
 }

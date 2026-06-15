@@ -9,4 +9,7 @@ public interface IAIService
     Task<CalorieEstimateResponseDto> EstimateCaloriesAsync(string foodDescription, int userId);
     Task<MealRecommendationResponseDto> GetMealRecommendationsAsync(MealRecommendationRequestDto request, int userId);
     Task<MealPlanResponseDto> GetMealPlanAsync(MealPlanRequestDto request, int userId);
+    Task<List<ChatHistoryDto>> GetChatHistoryAsync(int userId, int page, int pageSize);
+    Task<bool> DeleteChatRecordAsync(int requestId, int userId);
+    Task<int> DeleteAllChatHistoryAsync(int userId);
 }
