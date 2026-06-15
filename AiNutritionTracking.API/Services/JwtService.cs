@@ -30,7 +30,8 @@ namespace AiNutritionTracking.API.Services
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email ?? string.Empty),
                 new Claim("id", user.UserId.ToString()),
                 new Claim("username", user.Username ?? string.Empty),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.Role, user.RoleId == 1 ? "Admin" : "User")
             };
 
             var token = new JwtSecurityToken(
