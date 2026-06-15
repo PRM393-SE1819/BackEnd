@@ -226,4 +226,30 @@ public class AIController : ControllerBase
         var response = await _aiService.GetMealPlanAsync(request, userId);
         return Ok(response);
     }
+
+    // ─── 6. Chat History ─────────────────────────────────────────────────────
+
+    /// <summary>Get chat history for the current user.</summary>
+    /// <remarks>
+    /// Returns a paginated list of past AI chat conversations, newest first.
+    ///
+    ///     GET /api/ai/chat/history?page=1&amp;pageSize=20
+    ///
+    /// </remarks>
+    /// <param name="page">Page number (default 1).</param>
+    /// <param name="pageSize">Records per page, max 50 (default 20).</param>
+    /// <response code="200">Paginated chat history.</response>
+    [HttpGet("chat/history")]
+    [ProducesResponseType(typeof(List<ChatHistoryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetChatHistory([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1 || pageSize > 50) pageSize = 20;
+
+        var userId = GetUserId();
+        _logger.LogInformation("Chat history request userId={UserId} page={Page}", userId, page);
+
+        var history = await _aiService.GetChatHistoryAsync(userId, page, pageSize);
+        return Ok(new { page, pageSize, count = history.Count, data = history });
+    }
 }

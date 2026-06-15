@@ -145,4 +145,47 @@ public class BodyFatController : ControllerBase
         var result = await _bodyFatService.AnalyzeFromMeasurementsAsync(request, userId);
         return Ok(result);
     }
+
+    // ─── History ─────────────────────────────────────────────────────────────
+
+    /// <summary>Get body fat analysis history for the current user.</summary>
+    /// <response code="200">List of past analyses sorted by date descending.</response>
+    [HttpGet("history")]
+    [ProducesResponseType(typeof(List<BodyFatHistoryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetHistory()
+    {
+        var userId = GetUserId();
+        var records = await _bodyFatService.GetHistoryAsync(userId);
+        return Ok(records);
+    }
+
+    /// <summary>Get details of a single body fat analysis by ID.</summary>
+    /// <response code="200">Analysis detail.</response>
+    /// <response code="404">Record not found or does not belong to the current user.</response>
+    [HttpGet("history/{id:int}")]
+    [ProducesResponseType(typeof(BodyFatHistoryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetHistoryById(int id)
+    {
+        var userId = GetUserId();
+        var record = await _bodyFatService.GetHistoryByIdAsync(id, userId);
+        if (record is null)
+            return NotFound(new { success = false, message = "Record not found." });
+        return Ok(record);
+    }
+
+    /// <summary>Delete a body fat analysis record.</summary>
+    /// <response code="200">Deleted successfully.</response>
+    /// <response code="404">Record not found or does not belong to the current user.</response>
+    [HttpDelete("history/{id:int}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteHistory(int id)
+    {
+        var userId  = GetUserId();
+        var deleted = await _bodyFatService.DeleteHistoryAsync(id, userId);
+        if (!deleted)
+            return NotFound(new { success = false, message = $"Body fat analysis record #{id} not found." });
+        return Ok(new { success = true, message = $"Body fat analysis record #{id} has been deleted successfully." });
+    }
 }

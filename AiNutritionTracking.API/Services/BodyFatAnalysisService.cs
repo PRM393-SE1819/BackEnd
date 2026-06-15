@@ -5,6 +5,7 @@ using AiNutritionTracking.API.Data;
 using AiNutritionTracking.API.DTOs.AI;
 using AiNutritionTracking.API.Helpers;
 using AiNutritionTracking.API.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace AiNutritionTracking.API.Services;
@@ -292,5 +293,54 @@ public class BodyFatAnalysisService : IBodyFatAnalysisService
             _logger.LogError(ex, "Body fat formula analysis failed for userId={UserId}", userId);
             throw;
         }
+    }
+
+    // ── History ───────────────────────────────────────────────────────────────
+
+    public async Task<List<BodyFatHistoryDto>> GetHistoryAsync(int userId)
+    {
+        return await _db.BodyFatAnalyses
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new BodyFatHistoryDto
+            {
+                Id               = x.Id,
+                EstimatedBodyFat = x.EstimatedBodyFat,
+                Category         = x.Category,
+                HealthAssessment = x.HealthAssessment,
+                Recommendation   = x.Recommendation,
+                TargetWeight     = x.TargetWeight,
+                CreatedAt        = x.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<BodyFatHistoryDto?> GetHistoryByIdAsync(int id, int userId)
+    {
+        return await _db.BodyFatAnalyses
+            .Where(x => x.Id == id && x.UserId == userId)
+            .Select(x => new BodyFatHistoryDto
+            {
+                Id               = x.Id,
+                EstimatedBodyFat = x.EstimatedBodyFat,
+                Category         = x.Category,
+                HealthAssessment = x.HealthAssessment,
+                Recommendation   = x.Recommendation,
+                TargetWeight     = x.TargetWeight,
+                CreatedAt        = x.CreatedAt
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<bool> DeleteHistoryAsync(int id, int userId)
+    {
+        var record = await _db.BodyFatAnalyses
+            .FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+
+        if (record is null) return false;
+
+        _db.BodyFatAnalyses.Remove(record);
+        await _db.SaveChangesAsync();
+        return true;
     }
 }

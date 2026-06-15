@@ -72,4 +72,15 @@ public class AIRepository : IAIRepository
             .Take(pageSize)
             .ToListAsync();
     }
+
+    public async Task<List<Airequest>> GetChatHistoryAsync(int userId, int page = 1, int pageSize = 20)
+    {
+        return await _context.Airequests
+            .Include(r => r.Airesponses)
+            .Where(r => r.UserId == userId && r.RequestType == "Chat")
+            .OrderByDescending(r => r.RequestedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
 }

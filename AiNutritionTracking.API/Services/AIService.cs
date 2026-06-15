@@ -359,4 +359,22 @@ public class AIService : IAIService
             return new MealPlanResponseDto();
         }
     }
+
+    // ── Chat History ──────────────────────────────────────────────────────────
+
+    public async Task<List<ChatHistoryDto>> GetChatHistoryAsync(int userId, int page, int pageSize)
+    {
+        var records = await _aiRepository.GetChatHistoryAsync(userId, page, pageSize);
+
+        return records.Select(r => new ChatHistoryDto
+        {
+            RequestId     = r.RequestId,
+            Question      = r.Prompt ?? string.Empty,
+            Answer        = r.Airesponses.FirstOrDefault()?.RawResponse ?? string.Empty,
+            TokensUsed    = r.TokensUsed,
+            ResponseTimeMs = r.ResponseTimeMs,
+            Status        = r.Status ?? string.Empty,
+            RequestedAt   = r.RequestedAt
+        }).ToList();
+    }
 }
