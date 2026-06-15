@@ -73,6 +73,7 @@ namespace AiNutritionTracking.API.Services
                 Username = request.Username,
                 FullName = request.FullName,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                RoleId = 2,
                 #if DEBUG
                 EmailVerified = true, // Auto-verify in Development
                 #else
