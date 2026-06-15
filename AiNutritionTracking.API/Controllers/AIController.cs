@@ -252,4 +252,36 @@ public class AIController : ControllerBase
         var history = await _aiService.GetChatHistoryAsync(userId, page, pageSize);
         return Ok(new { page, pageSize, count = history.Count, data = history });
     }
+
+    // ─── 7. Delete single chat record ────────────────────────────────────────
+
+    /// <summary>Delete a specific chat record by ID.</summary>
+    /// <response code="200">Deleted successfully.</response>
+    /// <response code="404">Record not found or does not belong to the current user.</response>
+    [HttpDelete("chat/history/{id:int}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteChatRecord(int id)
+    {
+        var userId  = GetUserId();
+        var deleted = await _aiService.DeleteChatRecordAsync(id, userId);
+        if (!deleted)
+            return NotFound(new { success = false, message = $"Chat record #{id} not found." });
+
+        return Ok(new { success = true, message = $"Chat record #{id} has been deleted successfully." });
+    }
+
+    // ─── 8. Delete all chat history ──────────────────────────────────────────
+
+    /// <summary>Delete all chat history for the current user.</summary>
+    /// <response code="200">All records deleted, returns count of deleted items.</response>
+    [HttpDelete("chat/history")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> DeleteAllChatHistory()
+    {
+        var userId  = GetUserId();
+        var count   = await _aiService.DeleteAllChatHistoryAsync(userId);
+
+        return Ok(new { success = true, message = $"All chat history deleted successfully.", deletedCount = count });
+    }
 }

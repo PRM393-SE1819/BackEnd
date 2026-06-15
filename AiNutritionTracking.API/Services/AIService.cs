@@ -368,13 +368,19 @@ public class AIService : IAIService
 
         return records.Select(r => new ChatHistoryDto
         {
-            RequestId     = r.RequestId,
-            Question      = r.Prompt ?? string.Empty,
-            Answer        = r.Airesponses.FirstOrDefault()?.RawResponse ?? string.Empty,
-            TokensUsed    = r.TokensUsed,
+            RequestId      = r.RequestId,
+            Question       = r.Prompt ?? string.Empty,
+            Answer         = r.Airesponses.FirstOrDefault()?.RawResponse ?? string.Empty,
+            TokensUsed     = r.TokensUsed,
             ResponseTimeMs = r.ResponseTimeMs,
-            Status        = r.Status ?? string.Empty,
-            RequestedAt   = r.RequestedAt
+            Status         = r.Status ?? string.Empty,
+            RequestedAt    = r.RequestedAt
         }).ToList();
     }
+
+    public async Task<bool> DeleteChatRecordAsync(int requestId, int userId)
+        => await _aiRepository.DeleteChatRecordAsync(requestId, userId);
+
+    public async Task<int> DeleteAllChatHistoryAsync(int userId)
+        => await _aiRepository.DeleteAllChatHistoryAsync(userId);
 }
