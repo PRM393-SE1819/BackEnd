@@ -1,6 +1,10 @@
 using System.Text;
 using AiNutritionTracking.API.Data;
+using AiNutritionTracking.API.Models;
 using AiNutritionTracking.API.Services;
+using AiNutritionTracking.API.Services.Admin.FoodManagement;
+using AiNutritionTracking.API.Services.Admin.UserManagement;
+using AiNutritionTracking.API.Services.Cloudinary;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -53,6 +57,9 @@ builder.Services.AddScoped<IMealService, MealService>();
 builder.Services.AddScoped<INutritionService, NutritionService>();
 builder.Services.AddScoped<IWaterService, WaterService>();
 builder.Services.AddScoped<IWeightService, WeightService>();
+builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+builder.Services.AddScoped<IAdminFoodService, AdminFoodService>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 // In-memory cache (used for OTP storage)
 builder.Services.AddMemoryCache();
@@ -82,11 +89,11 @@ builder.Services.AddAuthentication(options =>
     {
         OnTokenValidated = ctx =>
         {
-            // L?y ID c?a Token (JTI)
+            // lay id token
             var jti = ctx.Principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value;
             if (!string.IsNullOrEmpty(jti))
             {
-                // Ki?m tra xem Token này có n?m trong "Danh sách ?en" (MemoryCache) không
+              //kt token cos nam trong danh sach den khong (memortcache)
                 var cache = ctx.HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
                 if (cache.TryGetValue($"revoked:{jti}", out _))
                 {
@@ -108,23 +115,58 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "AiNutritionTracking API v1");
-    //c.RoutePrefix = string.Empty;
 });
-
 app.UseCors("AllowAll");
-//app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// 2. CẤU HÌNH NHẬN ĐỘNG PORT TỪ RENDER
+// Seed Admin
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AinutritiontrackingContext>();
+    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    var adminEmail = configuration["AdminSeed:Email"]!;
+    var adminPassword = configuration["AdminSeed:Password"]!;
+    var adminFullName = configuration["AdminSeed:FullName"]!;
+
+    if (!context.Roles.Any(r => r.RoleId == 1))
+    {
+        context.Roles.Add(new Role { RoleId = 1, RoleName = "Admin", Description = "Administrator", CreatedAt = DateTime.UtcNow });
+        context.SaveChanges();
+    }
+
+    if (!context.Roles.Any(r => r.RoleId == 2))
+    {
+        context.Roles.Add(new Role { RoleId = 2, RoleName = "User", Description = "Normal User", CreatedAt = DateTime.UtcNow });
+        context.SaveChanges();
+    }
+
+    if (!context.Users.Any(u => u.Email == adminEmail))
+    {
+        context.Users.Add(new User
+        {
+            Username = "admin",
+            FullName = adminFullName,
+            Email = adminEmail,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+            RoleId = 1,
+            EmailVerified = true,
+            Status = "Active",
+            IsDeleted = false,
+            CreatedAt = DateTime.UtcNow
+        });
+        context.SaveChanges();
+    }
+}
+
+// Cấu hình nhận động PORT từ Render
 var port = Environment.GetEnvironmentVariable("PORT") ?? "1000";
 app.Urls.Add($"http://*:{port}");
-
 app.Run();
