@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AiNutritionTracking.API.Migrations
 {
     [DbContext(typeof(AinutritiontrackingContext))]
-    [Migration("20260615034646_AddBodyFatAnalysis")]
-    partial class AddBodyFatAnalysis
+    [Migration("20260627071541_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
